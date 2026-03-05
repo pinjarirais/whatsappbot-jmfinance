@@ -11,6 +11,13 @@ import P from "pino";
 import fetch from "node-fetch";
 import cors from "cors";
 import { createWorker } from "tesseract.js";
+import https from "https";
+
+/* ----------- */
+
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+});
 
 /* =========================
    BASIC SETUP
@@ -162,8 +169,6 @@ async function startWhatsApp() {
   sock.ev.on("messages.upsert", async ({ messages, type }) => {
     if (type !== "notify") return;
 
-    
-
     const msg = messages[0];
     if (!msg.message || msg.key.fromMe) return;
 
@@ -177,26 +182,26 @@ async function startWhatsApp() {
 
     const cleanedLowerText = lowerText.replace(/@\S+/g, "").trim();
 
-const isYes =
-  cleanedLowerText.startsWith("yes") ||
-  cleanedLowerText.startsWith("ha") ||
-  cleanedLowerText.startsWith("haan") ||
-  cleanedLowerText === "ok" ||
-  cleanedLowerText === "okay";
+    const isYes =
+      cleanedLowerText.startsWith("yes") ||
+      cleanedLowerText.startsWith("ha") ||
+      cleanedLowerText.startsWith("haan") ||
+      cleanedLowerText === "ok" ||
+      cleanedLowerText === "okay";
 
-const isNo =
-  cleanedLowerText.startsWith("no") ||
-  cleanedLowerText.startsWith("nahi") ||
-  cleanedLowerText.startsWith("cancel");
+    const isNo =
+      cleanedLowerText.startsWith("no") ||
+      cleanedLowerText.startsWith("nahi") ||
+      cleanedLowerText.startsWith("cancel");
 
-  // console.log("🧹 cleanedLowerText:", cleanedLowerText);
-  // console.log("🟢 isYes:", isYes);
+    // console.log("🧹 cleanedLowerText:", cleanedLowerText);
+    // console.log("🟢 isYes:", isYes);
 
-  //   console.log("📩 Incoming message:", text);
-  //   console.log("📩 lowerText:", lowerText);
+    //   console.log("📩 Incoming message:", text);
+    //   console.log("📩 lowerText:", lowerText);
 
-  //   console.log("🟢 isYes:", isYes);
-  //   console.log("🔴 isNo:", isNo);
+    //   console.log("🟢 isYes:", isYes);
+    //   console.log("🔴 isNo:", isNo);
 
     /* =========================
    SAFETY: YES बिना STATE
@@ -232,6 +237,7 @@ const isNo =
 
             const response = await fetch(N8N_WEBHOOK_URL, {
               method: "POST",
+              agent: httpsAgent,
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 message: state.originalQuestion,
@@ -321,6 +327,7 @@ const isNo =
 
           const response = await fetch(N8N_WEBHOOK_URL, {
             method: "POST",
+            agent: httpsAgent,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               message: extractedText,
@@ -395,6 +402,7 @@ const isNo =
 
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: "POST",
+          agent: httpsAgent,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: cleanText,
@@ -414,15 +422,17 @@ const isNo =
         //console.log("🤖 RAW BOT REPLY:", botReply);
 
         if (/would you like|knowledge base|search using my/i.test(botReply)) {
-  console.log("🧠 Conversation state SET for:", remoteJid);
+          console.log("🧠 Conversation state SET for:", remoteJid);
 
-  conversationState.set(remoteJid, {
-    originalQuestion: cleanText,
-  });
-}
+          conversationState.set(remoteJid, {
+            originalQuestion: cleanText,
+          });
+        }
 
         await sock.sendMessage(remoteJid, { text: botReply });
-      } catch {
+      } catch (err) {
+        console.error("❌ ERROR:", err);
+
         await sock.sendMessage(remoteJid, {
           text: "⚠️ Something went wrong.",
         });
