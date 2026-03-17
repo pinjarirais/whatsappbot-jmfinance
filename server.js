@@ -256,9 +256,32 @@ async function startWhatsApp() {
 
             const data = await safeParseResponse(response);
 
-            await sock.sendMessage(remoteJid, {
-              text: data.reply || data.output || "🤖 No response.",
-            });
+            console.log("📥 RAW N8N RESPONSE:", data);
+
+            let reply =
+              data.reply ||
+              data.output ||
+              data.response ||
+              data.text ||
+              data.answer ||
+              "";
+
+            // Agar object aa gaya ho
+            if (typeof reply === "object") {
+              reply = JSON.stringify(reply, null, 2);
+            }
+
+            // Agar pura response hi string ho
+            if (!reply && typeof data === "string") {
+              reply = data;
+            }
+
+            // Final fallback
+            if (!reply || reply.trim().length === 0) {
+              reply = "⚠️ AI returned empty response.";
+            }
+
+            await sock.sendMessage(remoteJid, { text: reply });
           } catch {
             await sock.sendMessage(remoteJid, {
               text: "⚠️ Confirmation failed.",
