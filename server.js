@@ -35,7 +35,7 @@ let pairingCode = null;
    CONFIG
 ========================= */
 //const N8N_WEBHOOK_URL = "https://57.159.24.110:5678/webhook/whatsapp-rag";
-const N8N_WEBHOOK_URL = "https://raisclover.app.n8n.cloud/webhook/whatsapp-rag";
+const N8N_WEBHOOK_URL = "https://cloverinfotech.app.n8n.cloud/webhook/whatsapp-rag";
 
 const BOT_NAMES = ["yesbank bot", "yes bank bot", "ai response"];
 const BOT_NUMBER_FALLBACKS = ["65559051915364"];
