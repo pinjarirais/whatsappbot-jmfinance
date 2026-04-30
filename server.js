@@ -34,8 +34,8 @@ let pairingCode = null;
 /* =========================
    CONFIG
 ========================= */
-//const N8N_WEBHOOK_URL = "https://57.159.24.110:5678/webhook/whatsapp-rag";
-const N8N_WEBHOOK_URL = "https://clovertechnology.app.n8n.cloud/webhook/whatsapp-rag";
+const N8N_WEBHOOK_URL = "https://57.159.24.110:5678/webhook/whatsapp-rag";
+//const N8N_WEBHOOK_URL = "https://clovertechnology.app.n8n.cloud/webhook/whatsapp-rag";
 
 const BOT_NAMES = ["yesbank bot", "yes bank bot", "ai response"];
 const BOT_NUMBER_FALLBACKS = ["65559051915364"];
@@ -122,7 +122,8 @@ async function startWhatsApp() {
     if (!ocrWorker) {
       console.log("🔤 Initializing OCR Worker...");
       ocrWorker = await createWorker("eng+hin");
-      await ocrWorker.setParameters({ tessedit_pageseg_mode: 6 });
+      await ocrWorker.setParameters({ tessedit_pageseg_mode: 6 });      
+
     }
   } catch (err) {
     console.log("❌ OCR Worker Init Failed:", err.message);
