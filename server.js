@@ -4,6 +4,9 @@ import makeWASocket, {
   downloadMediaMessage,
   fetchLatestBaileysVersion,
 } from "@whiskeysockets/baileys";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 import express from "express";
 import QRCode from "qrcode";
@@ -12,6 +15,7 @@ import fetch from "node-fetch";
 import cors from "cors";
 import { createWorker } from "tesseract.js";
 import https from "https";
+
 
 /* ----------- */
 
@@ -34,7 +38,7 @@ let pairingCode = null;
 /* =========================
    CONFIG
 ========================= */
-const N8N_WEBHOOK_URL = "https://57.159.24.110:5678/webhook/whatsapp-rag";
+const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
 //const N8N_WEBHOOK_URL = "https://clovertechnology.app.n8n.cloud/webhook/whatsapp-rag";
 
 const BOT_NAMES = ["yesbank bot", "yes bank bot", "ai response"];
