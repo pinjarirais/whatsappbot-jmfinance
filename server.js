@@ -611,6 +611,28 @@ app.get("/reset-auth", async (req, res) => {
   }
 });
 
+// disconnect whatsapp
+
+app.get("/disconnect", async (req, res) => {
+  try {
+    if (sock) {
+      await sock.logout();
+    }
+
+    res.json({
+      success: true,
+      message: "WhatsApp disconnected"
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+
 /* =========================
    CLEAN SHUTDOWN
 ========================= */
