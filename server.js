@@ -654,6 +654,12 @@ process.on("SIGINT", async () => {
 /* =========================
    START SERVER
 ========================= */
-app.listen(3000, () => {
-  console.log("🚀 Open → http://localhost:3000/pair-ui");
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Open → http://localhost:${PORT}/pair-ui`);
 });
+
+// app.listen(3000, () => {
+//   console.log("🚀 Open → http://localhost:3000/pair-ui");
+// });
