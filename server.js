@@ -7,15 +7,18 @@ import makeWASocket, {
 import dotenv from "dotenv";
 
 dotenv.config();
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 import express from "express";
 import QRCode from "qrcode";
 import P from "pino";
 import fetch from "node-fetch";
 import cors from "cors";
-import { createWorker } from "tesseract.js";
+//import { createWorker } from "tesseract.js";
+import OpenAI from "openai";
 import https from "https";
-
 
 /* ----------- */
 
@@ -32,7 +35,7 @@ app.use(cors());
 
 let sock;
 let latestQR = null;
-let ocrWorker;
+//let ocrWorker;
 let pairingCode = null;
 
 /* =========================
@@ -123,12 +126,11 @@ async function startWhatsApp() {
   const { version } = await fetchLatestBaileysVersion();
 
   try {
-    if (!ocrWorker) {
-      console.log("🔤 Initializing OCR Worker...");
-      ocrWorker = await createWorker("eng+hin");
-      await ocrWorker.setParameters({ tessedit_pageseg_mode: 6 });      
-
-    }
+    // if (!ocrWorker) {
+    //   console.log("🔤 Initializing OCR Worker...");
+    //   ocrWorker = await createWorker("eng+hin");
+    //   await ocrWorker.setParameters({ tessedit_pageseg_mode: 11 });
+    // }
   } catch (err) {
     console.log("❌ OCR Worker Init Failed:", err.message);
   }
@@ -149,7 +151,7 @@ async function startWhatsApp() {
 
     if (qr) {
       latestQR = await QRCode.toDataURL(qr);
-      console.log("📲 Scan QR → http://localhost:3000/qr");
+      console.log("📲 Scan QR → http://localhost:4001/qr");
     }
 
     if (connection === "close") {
@@ -314,12 +316,12 @@ async function startWhatsApp() {
        IMAGE HANDLING
     ========================= */
     if (msg.message.imageMessage) {
-      if (!ocrWorker) {
-        await sock.sendMessage(remoteJid, {
-          text: "⚠️ OCR engine not available.",
-        });
-        return;
-      }
+      // if (!ocrWorker) {
+      //   await sock.sendMessage(remoteJid, {
+      //     text: "⚠️ OCR engine not available.",
+      //   });
+      //   return;
+      // }
 
       if (chatBusy.has(remoteJid)) {
         await sock.sendMessage(remoteJid, {
@@ -341,11 +343,97 @@ async function startWhatsApp() {
             { logger: P({ level: "silent" }) },
           );
 
-          const {
-            data: { text },
-          } = await ocrWorker.recognize(buffer);
+          // const {
+          //   data: { text },
+          // } = await ocrWorker.recognize(buffer);
 
-          const extractedText = text.trim();
+          // const extractedText = text.trim();
+
+          const base64Image = buffer.toString("base64");
+
+          const visionResponse = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              {
+                role: "system",
+                content: `
+You are an SOP Screenshot Analyzer.
+
+Your task is to identify the exact application screen, workflow stage, error message, labels, buttons, and important UI elements visible in the screenshot.
+
+Rules:
+
+1. Extract information exactly as visible.
+2. Do not explain the screen.
+3. Do not provide troubleshooting steps.
+4. Do not provide recommendations.
+5. Do not guess missing information.
+6. Give highest priority to:
+
+   * Screen Name
+   * Workflow Stage
+   * Page Title
+   * Section Name
+7. Give secondary priority to:
+
+   * Buttons
+   * Labels
+   * Navigation Elements
+8. Give lowest priority to:
+
+   * Error Messages
+   * Validation Messages
+
+Return ONLY structured information in the following format:
+
+Screen Name: <screen name>
+
+Workflow Stage: <stage name or Unknown>
+
+Page Title:
+
+<title or Unknown>
+
+Visible Buttons: <buttons>
+
+Visible Labels: <labels>
+
+Visible Error Messages: <errors>
+
+Search Keywords: <comma separated keywords>
+
+Do not return explanations.
+Do not return summaries.
+Do not return solutions.
+Do not return additional text.
+      `,
+              },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Analyze this screenshot",
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:image/jpeg;base64,${base64Image}`,
+                    },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 300,
+          });
+
+          const extractedText =
+            visionResponse.choices?.[0]?.message?.content?.trim() || "";
+
+          console.log("GPT VISION OUTPUT:");
+          console.log(extractedText);
+
+          //console.log("OCR TEXT:", extractedText);
 
           if (!extractedText) {
             await sock.sendMessage(remoteJid, {
@@ -358,8 +446,15 @@ async function startWhatsApp() {
             method: "POST",
             agent: httpsAgent,
             headers: { "Content-Type": "application/json" },
+            // body: JSON.stringify({
+            //   message: extractedText,
+            //   type: "image",
+            //   language: detectLanguage(extractedText),
+            //   isGroup,
+            // }),
             body: JSON.stringify({
               message: extractedText,
+              originalType: "image",
               type: "image",
               language: detectLanguage(extractedText),
               isGroup,
@@ -519,13 +614,13 @@ app.post("/pair", async (req, res) => {
     //await waitForSocketReady(); // ✅ WAIT instead of error
 
     if (!sock.authState?.creds?.registered) {
-  const code = await sock.requestPairingCode(number);
+      const code = await sock.requestPairingCode(number);
 
-  return res.json({
-    success: true,
-    pairingCode: code,
-  });
-}
+      return res.json({
+        success: true,
+        pairingCode: code,
+      });
+    }
 
     const code = await sock.requestPairingCode(number);
 
@@ -630,24 +725,21 @@ app.get("/disconnect", async (req, res) => {
 
     res.json({
       success: true,
-      message: "WhatsApp disconnected"
+      message: "WhatsApp disconnected",
     });
-
   } catch (err) {
     res.status(500).json({
       success: false,
-      error: err.message
+      error: err.message,
     });
   }
 });
-
 
 /* =========================
    CLEAN SHUTDOWN
 ========================= */
 process.on("SIGINT", async () => {
   console.log("🛑 Shutting down...");
-  if (ocrWorker) await ocrWorker.terminate();
   process.exit(0);
 });
 
