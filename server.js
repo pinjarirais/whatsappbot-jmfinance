@@ -42,7 +42,6 @@ let pairingCode = null;
    CONFIG
 ========================= */
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
-//const N8N_WEBHOOK_URL = "https://clovertechnology.app.n8n.cloud/webhook/whatsapp-rag";
 
 const BOT_NAMES = ["jmfinance bot", "jm finance bot", "ai response"];
 const BOT_NUMBER_FALLBACKS = ["65559051915364"];
@@ -245,16 +244,17 @@ async function startWhatsApp() {
 
             const response = await fetch(N8N_WEBHOOK_URL, {
               method: "POST",
-              agent: httpsAgent,
+              // agent: httpsAgent,
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                session_id: remoteJid,
                 message: state.originalQuestion,
                 type: "text",
                 language: detectLanguage(state.originalQuestion),
                 isGroup,
 
                 confirmed: true,
-                mode: "direct_ai", // ✅ MAGIC FLAG
+                mode: "direct_ai",
               }),
             });
 
@@ -357,55 +357,83 @@ async function startWhatsApp() {
               {
                 role: "system",
                 content: `
-You are an SOP Screenshot Analyzer.
+You are an Enterprise Banking SOP Screenshot Analyzer.
 
-Your task is to identify the exact application screen, workflow stage, error message, labels, buttons, and important UI elements visible in the screenshot.
+Your task is ONLY to extract structured metadata from the screenshot for semantic SOP retrieval.
 
-Rules:
+IMPORTANT:
 
-1. Extract information exactly as visible.
-2. Do not explain the screen.
-3. Do not provide troubleshooting steps.
-4. Do not provide recommendations.
-5. Do not guess missing information.
-6. Give highest priority to:
+If a field is clearly visible, populate it.
 
-   * Screen Name
-   * Workflow Stage
-   * Page Title
-   * Section Name
-7. Give secondary priority to:
+If it is not visible, return an empty string.
 
-   * Buttons
-   * Labels
-   * Navigation Elements
-8. Give lowest priority to:
+Never guess.
 
-   * Error Messages
-   * Validation Messages
+Never explain.
 
-Return ONLY structured information in the following format:
+Never provide troubleshooting.
 
-Screen Name: <screen name>
+Never provide recommendations.
 
-Workflow Stage: <stage name or Unknown>
+Extraction Priority:
 
-Page Title:
+1. Screen Name (Most Important)
+2. Page Title
+3. Workflow Stage
+4. Module
+5. Error / Validation Messages
+6. Buttons
+7. Labels
+8. Menu Items
+9. Table Headers
+10. IDs
+11. Search Keywords
 
-<title or Unknown>
+Screen Name Rules:
 
-Visible Buttons: <buttons>
+- Usually appears as the largest heading.
+- May be the page title.
+- May appear above buttons.
+- Examples:
+  - Deal Summary
+  - Customer Management
+  - Create Lead
+  - Bureau Report
+  - LOS Submit
 
-Visible Labels: <labels>
+Workflow Stage Rules:
 
-Visible Error Messages: <errors>
+Examples:
 
-Search Keywords: <comma separated keywords>
+- DDE
+- LOS Submit
+- Customer Management
+- Create Lead
 
-Do not return explanations.
-Do not return summaries.
-Do not return solutions.
-Do not return additional text.
+If not visible return "".
+
+Keywords Rules:
+
+Generate keywords ONLY from visible information.
+
+Include:
+
+- Screen Name
+- Page Title
+- Workflow
+- Error Messages
+- Validation Messages
+- Buttons
+- Labels
+- IDs
+
+Return ONLY valid JSON.
+
+No markdown.
+
+No explanation.
+
+No comments.
       `,
               },
               {
@@ -413,7 +441,7 @@ Do not return additional text.
                 content: [
                   {
                     type: "text",
-                    text: "Analyze this screenshot",
+                    text: "Extract structured metadata from this application screenshot.",
                   },
                   {
                     type: "image_url",
@@ -444,7 +472,7 @@ Do not return additional text.
 
           const response = await fetch(N8N_WEBHOOK_URL, {
             method: "POST",
-            agent: httpsAgent,
+            // agent: httpsAgent,
             headers: { "Content-Type": "application/json" },
             // body: JSON.stringify({
             //   message: extractedText,
@@ -453,6 +481,7 @@ Do not return additional text.
             //   isGroup,
             // }),
             body: JSON.stringify({
+              session_id: remoteJid,
               message: extractedText,
               originalType: "image",
               type: "image",
@@ -526,9 +555,10 @@ Do not return additional text.
 
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: "POST",
-          agent: httpsAgent,
+          // agent: httpsAgent,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            session_id: remoteJid,
             message: cleanText,
             type: "text",
             language: detectLanguage(cleanText),
